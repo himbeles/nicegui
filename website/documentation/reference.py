@@ -1,4 +1,5 @@
 import inspect
+from collections import defaultdict
 from typing import Callable, Optional
 
 from nicegui import binding, ui
@@ -24,13 +25,9 @@ def generate_class_doc(class_obj: type, part_title: str) -> None:
         for name in dir(base):
             if not name.startswith('_') and _is_method_or_property(base, name):
                 attributes[name] = (base, getattr(base, name, None))
-    properties = {name: (ancestor, attribute) for name, (ancestor, attribute) in attributes.items() if not callable(attribute)}
+    properties = {name: (ancestor, attribute) for name, (ancestor, attribute)
+                  in attributes.items() if not callable(attribute)}
     methods = {name: (ancestor, attribute) for name, (ancestor, attribute) in attributes.items() if callable(attribute)}
-
-    def ancestor_label(ancestor):
-        if ancestor is not class_obj:
-            ui.label(f'(inherited from {ancestor.__name__})') \
-                .classes('ml-8 text-sm text-gray-500 dark:text-gray-400 -mt-3')
 
     def render_section(items: dict[str, tuple[type, object | None]], is_method: bool) -> None:
         sorted_items = sorted(items.items())
@@ -49,7 +46,6 @@ def generate_class_doc(class_obj: type, part_title: str) -> None:
                     .classes('w-full overflow-x-auto')
             else:
                 ui.markdown(f'**`{name}`**`{_generate_property_signature_description(attr)}`')
-            ancestor_label(owner)
             docstring = getattr(attr, '__doc__', None)
             if docstring:
                 _render_docstring(docstring).classes('ml-8')
@@ -57,9 +53,22 @@ def generate_class_doc(class_obj: type, part_title: str) -> None:
         for name, owner, attr in native:
             render_item(name, owner, attr)
         if inherited_items:
-            ui.label('Inherited').classes('text-sm text-gray-500 dark:text-gray-400 mt-2')
+            grouped_items = defaultdict(list)
             for name, owner, attr in inherited_items:
-                render_item(name, owner, attr)
+                grouped_items[owner].append((name, owner, attr))
+
+            mro = [base for base in class_obj.__mro__ if base.__module__.startswith('nicegui.')]
+            mro_indices = {cls: i for i, cls in enumerate(mro)}
+            sorted_groups = sorted(grouped_items.items(), key=lambda x: mro_indices.get(x[0], len(mro)))
+
+            for owner_cls, owner_items in sorted_groups:
+                with ui.row().classes('w-full no-wrap items-center'):
+                    ui.element('div').classes('flex-grow border-t border-gray-500 dark:border-gray-400')
+                    ui.label(f'Inherited from {owner_cls.__name__}') \
+                        .classes('text-sm text-gray-500 dark:text-gray-400')
+                    ui.element('div').classes('flex-grow border-t border-gray-500 dark:border-gray-400')
+                for name, item_owner, attr in sorted(owner_items, key=lambda x: x[0]):
+                    render_item(name, item_owner, attr)
 
     if properties:
         subheading('Properties', anchor_name=create_anchor_name(part_title.replace('Reference', 'Properties')))
