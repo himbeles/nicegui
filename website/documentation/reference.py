@@ -47,7 +47,7 @@ def generate_class_doc(class_obj: type, part_title: str) -> None:
             else:
                 ui.markdown(f'**`{name}`**`{_generate_property_signature_description(attr)}`')
             docstring = getattr(attr, '__doc__', None)
-            if docstring:
+            if attr is not None and docstring:
                 _render_docstring(docstring).classes('ml-8')
 
         for name, owner, attr in native:
