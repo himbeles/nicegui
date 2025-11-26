@@ -1,6 +1,6 @@
 [project]
 name = "nicegui"
-version = "3.0.0"
+dynamic = ["version"]
 description = "Create web-based user interfaces with Python. The nice way."
 authors = [{ name = "Zauberzeug GmbH", email = "info@zauberzeug.com" }]
 requires-python = ">=3.9,<4"
@@ -80,19 +80,22 @@ dev = [
     "rcssmin>=1.2.1,<2",
     "tinycss2>=1.4.0,<2",
     "html-sanitizer>=2.6.0,<3",
-    "poetry-dynamic-versioning>=1.8.0,<2",
 ]
 
 [build-system]
-requires = [
-    "poetry-core>=1.0.0",
-    "poetry-dynamic-versioning>=1.0.0,<2.0.0",
-]
-build-backend = "poetry_dynamic_versioning.backend"
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
 
-[tool.poetry-dynamic-versioning]
-enable = true
-vcs = "git"
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[tool.hatch.build.hooks.version]
+path = "nicegui/version.py"
+template = '''
+__version__: str = '{version}'
+'''
+
+[tool.uv-dynamic-versioning]
 style = "pep440"
 
 [tool.pytest.ini_options]
